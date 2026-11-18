@@ -114,6 +114,16 @@ build.bat test
 - Alguns itens protegidos pelo sistema (ex.: chaves pertencentes ao TrustedInstaller) podem falhar na
   exclusão. Eles são listados no resultado.
 
+## Aviso e licença
+
+Este programa remove arquivos e altera o registro do Windows. Ele foi feito para ser seguro: tudo passa pela
+sua revisão, há backup automático do registro e os arquivos vão para a Lixeira. Mesmo assim, **use por sua
+conta e risco** e revise a lista antes de confirmar. Recomenda-se manter a opção de ponto de restauração ligada.
+
+Distribuído sob a [licença MIT](LICENSE), sem garantias. Você pode usar, modificar e redistribuir livremente.
+
+Desenvolvido com auxílio do [Claude Code](https://claude.com/claude-code).
+
 ## Estrutura
 
 ```
