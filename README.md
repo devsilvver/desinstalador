@@ -7,9 +7,22 @@ entradas na variável PATH, associações de arquivos e rastros de uso do Window
 
 **Nada é excluído sem você confirmar.** E pastas de projetos ou arquivos pessoais nunca são varridas.
 
+## Download
+
+**[⬇️ Baixar a versão mais recente (DesinstaladorCompleto.exe)](https://github.com/devsilvver/desinstalador/releases/latest/download/DesinstaladorCompleto.exe)**
+
+Também disponível na [página de Releases](https://github.com/devsilvver/desinstalador/releases). Não precisa instalar: é um
+único arquivo portátil. Basta baixar e abrir.
+
+**Requisitos**: Windows 10 ou 11 (usa o .NET Framework 4.5+, que já vem no Windows) e permissão de administrador.
+
+> Como o executável não tem assinatura digital, o Windows SmartScreen pode exibir "O Windows protegeu o
+> computador". Clique em **Mais informações → Executar assim mesmo**. Se preferir, compile você mesmo a
+> partir do código (veja [Compilar](#compilar)).
+
 ## Como usar
 
-1. Abra `bin\DesinstaladorCompleto.exe` (o Windows pedirá permissão de administrador).
+1. Abra o `DesinstaladorCompleto.exe` baixado (o Windows pedirá permissão de administrador).
 2. Encontre o programa: digite na busca ou use os filtros **Todos / Programas / Microsoft Store**.
 3. Clique no programa. O painel à direita mostra os detalhes e os botões **Desinstalar**,
    **Remoção forçada** e **Abrir pasta de instalação**. Dois cliques ou Enter também desinstalam.
