@@ -36,6 +36,10 @@ Também disponível na [página de Releases](https://github.com/devsilvver/desin
 na lista de resquícios, `Espaço` marca/desmarca e `Ctrl+A` seleciona todos. Começar a digitar com a lista
 em foco já pesquisa.
 
+**Tema claro ou escuro**: por padrão o programa segue o tema do Windows (*Configurações → Personalização →
+Cores → Modo de aplicativo*) e muda sozinho quando você troca o tema do Windows. Pelo botão **Tema**, no canto
+superior direito, dá para fixar **Claro** ou **Escuro**. A escolha fica salva para as próximas vezes.
+
 **Remoção forçada**: para programas com desinstalador quebrado ou ausente. Pula o desinstalador e faz
 apenas a varredura de resquícios (também com revisão e confirmação).
 
@@ -138,6 +142,7 @@ src/
   LeftoverScanner.cs   Procura resquícios (somente leitura)
   Cleaner.cs           Backup + exclusão dos itens confirmados
   SafetyGuard.cs       Regras do que NUNCA pode ser excluído
+  Theme.cs, Controls.cs  Temas claro/escuro (segue o Windows) e controles desenhados à mão
   Util.cs, RegUtil.cs, SystemHelpers.cs, NativeMethods.cs
 tests/
   ScanTest.cs, E2ETest.cs

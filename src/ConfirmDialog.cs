@@ -20,6 +20,7 @@ namespace DesinstaladorCompleto
             AutoScaleMode = AutoScaleMode.None;
             Font = Theme.Body;
             BackColor = Theme.Surface;
+            ForeColor = Theme.Text;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -108,13 +109,20 @@ namespace DesinstaladorCompleto
             {
                 Options = new UninstallOptions { CreateRestorePoint = tglRestore.Checked, Silent = tglSilent.Enabled && tglSilent.Checked };
             };
+            Theme.Attach(this);
         }
 
         /// <summary>Caixa colorida com ícone e texto explicativo.</summary>
-        private class InfoBox : Control
+        private class InfoBox : Control, IThemeRetint
         {
             private readonly string glyph, text;
-            private readonly Color bg, fg;
+            private Color bg, fg;
+
+            public void Retint(Palette from, Palette to)
+            {
+                bg = from.Translate(bg, to, false);
+                fg = from.Translate(fg, to, true);
+            }
 
             public InfoBox(string glyph, string text, Color bg, Color fg)
             {

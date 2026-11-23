@@ -21,7 +21,9 @@ namespace DesinstaladorCompleto
         private static int S(int px) { return Theme.S(px); }
 
         // cabeçalho / barra de ferramentas
-        private readonly ModernButton btnRefresh;
+        private readonly ModernButton btnRefresh, btnTheme;
+        private readonly ContextMenuStrip themeMenu;
+        private readonly Label lblSub;
         private readonly SearchBox search;
         private readonly ModernButton segAll, segPrograms, segStore;
         private readonly ToggleSwitch tglSystem;
@@ -47,7 +49,7 @@ namespace DesinstaladorCompleto
         private readonly Timer searchTimer = new Timer { Interval = 200 };
         private readonly Dictionary<string, Bitmap> icons = new Dictionary<string, Bitmap>();
         private readonly Dictionary<string, Bitmap> bigIcons = new Dictionary<string, Bitmap>();
-        private readonly Bitmap defaultIcon, storeIcon;
+        private Bitmap defaultIcon, storeIcon;
 
         /// <summary>Usado só na compilação de pré-visualização para abrir com um programa selecionado.</summary>
         public string PreviewSelect;
@@ -62,6 +64,7 @@ namespace DesinstaladorCompleto
             AutoScaleMode = AutoScaleMode.None;
             Font = Theme.Body;
             BackColor = Theme.Background;
+            ForeColor = Theme.Text;
             StartPosition = FormStartPosition.CenterScreen;
             Size = new Size(S(1260), S(800));
             MinimumSize = new Size(S(980), S(620));
@@ -76,15 +79,23 @@ namespace DesinstaladorCompleto
             var logo = new PictureBox { BackColor = Color.Transparent, SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(S(42), S(42)), Location = new Point(S(22), S(18)) };
             if (Program.AppIcon != null) logo.Image = new Icon(Program.AppIcon, S(48), S(48)).ToBitmap();
             var lblTitle = new Label { Text = "Desinstalador Completo", Font = Theme.Title, ForeColor = Color.White, BackColor = Color.Transparent, AutoSize = true, Location = new Point(S(74), S(13)) };
-            var lblSub = new Label
+            lblSub = new Label
             {
                 Text = "Remova programas e todos os resquícios com segurança  •  nada é excluído sem a sua confirmação",
-                Font = Theme.Small, ForeColor = Color.FromArgb(225, 233, 255), BackColor = Color.Transparent, AutoSize = true, Location = new Point(S(76), S(46))
+                Font = Theme.Small, ForeColor = Theme.HeaderSubtext, BackColor = Color.Transparent, AutoSize = true, Location = new Point(S(76), S(46))
             };
             btnRefresh = new ModernButton { Kind = ButtonKind.OnAccent, Glyph = Glyphs.Refresh, Text = "Atualizar lista", AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-            header.Controls.AddRange(new Control[] { logo, lblTitle, lblSub, btnRefresh });
-            header.Resize += (s, e) => btnRefresh.Location = new Point(header.Width - btnRefresh.Width - S(22), (header.Height - btnRefresh.Height) / 2);
+            btnTheme = new ModernButton { Kind = ButtonKind.OnAccent, Glyph = Glyphs.ColorTheme, Text = "Tema", AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            header.Controls.AddRange(new Control[] { logo, lblTitle, lblSub, btnTheme, btnRefresh });
+            header.Resize += (s, e) =>
+            {
+                btnRefresh.Location = new Point(header.Width - btnRefresh.Width - S(22), (header.Height - btnRefresh.Height) / 2);
+                btnTheme.Location = new Point(btnRefresh.Left - btnTheme.Width - S(8), btnRefresh.Top);
+            };
             tips.SetToolTip(btnRefresh, "Recarregar a lista de programas (F5)");
+            tips.SetToolTip(btnTheme, "Escolher o tema: o mesmo do Windows, claro ou escuro");
+            themeMenu = BuildThemeMenu();
+            btnTheme.Click += (s, e) => themeMenu.Show(btnTheme, new Point(btnTheme.Width - themeMenu.GetPreferredSize(Size.Empty).Width, btnTheme.Height + S(4)));
 
             // ================================================== barra de ferramentas
             toolbar = new Panel { Dock = DockStyle.Top, Height = S(66), BackColor = Theme.Background };
@@ -236,6 +247,53 @@ namespace DesinstaladorCompleto
             };
             Shown += (s, e) => { LayoutToolbar(); lv.FillFirstColumn(); LoadPrograms(); };
             UpdateDetails();
+
+            Theme.Changed += OnThemeChanged;
+            FormClosed += (s, e) => Theme.Changed -= OnThemeChanged;
+            Theme.Attach(this);
+        }
+
+        // ------------------------------------------------------------------ tema
+
+        private ContextMenuStrip BuildThemeMenu()
+        {
+            var menu = new ContextMenuStrip { Font = Theme.Body, ShowImageMargin = false, ShowCheckMargin = true };
+            var items = new[]
+            {
+                new ToolStripMenuItem("Usar o tema do Windows") { Tag = ThemeMode.Sistema },
+                new ToolStripMenuItem("Claro") { Tag = ThemeMode.Claro },
+                new ToolStripMenuItem("Escuro") { Tag = ThemeMode.Escuro }
+            };
+            foreach (ToolStripMenuItem it in items)
+            {
+                it.Padding = new Padding(0, S(3), 0, S(3));
+                it.Click += (s, e) => Theme.SetMode((ThemeMode)((ToolStripItem)s).Tag);
+                menu.Items.Add(it);
+            }
+            menu.Opening += (s, e) =>
+            {
+                foreach (ToolStripMenuItem it in items) it.Checked = (ThemeMode)it.Tag == Theme.Mode;
+            };
+            Theme.RetintMenu(menu);
+            return menu;
+        }
+
+        private void OnThemeChanged(object sender, EventArgs e)
+        {
+            // Ícones e menus gerados com as cores do tema anterior precisam ser refeitos
+            Bitmap oldDefault = defaultIcon, oldStore = storeIcon;
+            defaultIcon = Theme.GlyphBitmap(Glyphs.App, S(28), Theme.TextSubtle);
+            storeIcon = Theme.GlyphBitmap(Glyphs.Store, S(28), Theme.Accent);
+            oldDefault.Dispose();
+            oldStore.Dispose();
+            bigIcons.Clear();
+            ContextMenuStrip oldMenu = lv.ContextMenuStrip;
+            BuildContextMenu();
+            if (oldMenu != null) oldMenu.Dispose();
+            Theme.RetintMenu(themeMenu);
+            lblSub.ForeColor = Theme.HeaderSubtext;
+            UpdateDetails();
+            lv.Invalidate();
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -313,6 +371,7 @@ namespace DesinstaladorCompleto
             menu.Items.Add("Detalhes técnicos", img(Glyphs.Info, Theme.Accent), (s, e) => ShowDetails());
             menu.Items.Add("Copiar nome", img(Glyphs.Document, Theme.TextMuted), (s, e) => { var p = Selected(); if (p != null) Clipboard.SetText(p.DisplayName); });
             menu.Opening += (s, e) => { if (Selected() == null) e.Cancel = true; };
+            Theme.RetintMenu(menu);
             lv.ContextMenuStrip = menu;
         }
 
@@ -529,9 +588,9 @@ namespace DesinstaladorCompleto
                     Color bg, fg;
                     switch (p.Kind)
                     {
-                        case ProgramKind.Msi: bg = Color.FromArgb(237, 233, 254); fg = Color.FromArgb(91, 33, 182); break;
-                        case ProgramKind.StoreApp: bg = Color.FromArgb(204, 251, 241); fg = Color.FromArgb(17, 94, 89); break;
-                        default: bg = Theme.AccentSoft; fg = Theme.AccentPressed; break;
+                        case ProgramKind.Msi: bg = Theme.PurpleLight; fg = Theme.PurpleText; break;
+                        case ProgramKind.StoreApp: bg = Theme.TealLight; fg = Theme.TealText; break;
+                        default: bg = Theme.AccentSoft; fg = Theme.AccentText; break;
                     }
                     Theme.DrawPill(g, new Rectangle(b.X + S(12), b.Y, b.Width - S(16), b.Height), p.KindText, bg, fg);
                     break;

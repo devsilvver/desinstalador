@@ -13,6 +13,7 @@ namespace DesinstaladorCompleto
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            Theme.Initialize();
 
 #if PREVIEW
             // Compilação de pré-visualização (build.bat preview): sem elevação, só para conferir a interface.

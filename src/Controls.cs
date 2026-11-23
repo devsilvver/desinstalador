@@ -2,6 +2,8 @@ using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace DesinstaladorCompleto
@@ -60,7 +62,7 @@ namespace DesinstaladorCompleto
             border = Color.Empty;
             if (!Enabled)
             {
-                bg = kind == ButtonKind.Ghost || kind == ButtonKind.OnAccent ? Color.Transparent : Color.FromArgb(243, 244, 246);
+                bg = kind == ButtonKind.Ghost || kind == ButtonKind.OnAccent ? Color.Transparent : Theme.Neutral;
                 fg = kind == ButtonKind.OnAccent ? Color.FromArgb(150, 255, 255, 255) : Theme.TextSubtle;
                 glyphColor = fg;
                 if (kind != ButtonKind.Ghost && kind != ButtonKind.OnAccent) border = Theme.Border;
@@ -77,16 +79,16 @@ namespace DesinstaladorCompleto
                     fg = Color.White;
                     break;
                 case ButtonKind.Ghost:
-                    bg = pressed ? Theme.Border : hover ? Color.FromArgb(238, 240, 243) : Color.Transparent;
+                    bg = pressed ? Theme.Border : hover ? Theme.NeutralHover : Color.Transparent;
                     fg = Theme.Text;
                     break;
                 case ButtonKind.Outline:
                     bg = pressed ? Theme.AccentLight : hover ? Theme.AccentSoft : Theme.Surface;
-                    fg = Theme.AccentPressed;
+                    fg = Theme.AccentText;
                     border = Theme.Accent;
                     break;
                 case ButtonKind.Warning:
-                    bg = pressed ? Color.FromArgb(253, 230, 138) : hover ? Theme.WarningLight : Theme.Surface;
+                    bg = pressed ? Theme.WarningPressed : hover ? Theme.WarningLight : Theme.Surface;
                     fg = Theme.WarningDark;
                     border = Theme.Warning;
                     break;
@@ -99,7 +101,7 @@ namespace DesinstaladorCompleto
                     if (isChecked)
                     {
                         bg = Theme.AccentLight;
-                        fg = Theme.AccentPressed;
+                        fg = Theme.AccentText;
                         border = Theme.Accent;
                     }
                     else
@@ -303,7 +305,7 @@ namespace DesinstaladorCompleto
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             if (Width <= 0 || Height <= 0) return;
-            using (var b = new LinearGradientBrush(ClientRectangle, Theme.Accent, Theme.Indigo, LinearGradientMode.Horizontal))
+            using (var b = new LinearGradientBrush(ClientRectangle, Theme.HeaderStart, Theme.HeaderEnd, LinearGradientMode.Horizontal))
                 e.Graphics.FillRectangle(b, ClientRectangle);
         }
     }
@@ -414,9 +416,15 @@ namespace DesinstaladorCompleto
     }
 
     /// <summary>Ícone dentro de um círculo colorido.</summary>
-    internal class GlyphBadge : Control
+    internal class GlyphBadge : Control, IThemeRetint
     {
         protected override void OnPaintBackground(PaintEventArgs e) { }
+
+        public void Retint(Palette from, Palette to)
+        {
+            circle = from.Translate(circle, to, false);
+            glyphColor = from.Translate(glyphColor, to, true);
+        }
 
         private string glyph = Glyphs.Info;
         private Color circle = Theme.AccentLight, glyphColor = Theme.Accent;
@@ -498,7 +506,7 @@ namespace DesinstaladorCompleto
             r.Width = Math.Max(r.Width, ClientSize.Width);
             Color bg = e.Item.Selected ? Theme.AccentLight : e.ItemIndex == hotIndex ? Theme.RowHover : Theme.Surface;
             using (var b = new SolidBrush(bg)) g.FillRectangle(b, r);
-            using (var p = new Pen(Color.FromArgb(241, 243, 245))) g.DrawLine(p, r.Left, r.Bottom - 1, r.Right, r.Bottom - 1);
+            using (var p = new Pen(Theme.RowDivider)) g.DrawLine(p, r.Left, r.Bottom - 1, r.Right, r.Bottom - 1);
             if (e.Item.Selected) using (var b = new SolidBrush(Theme.Accent)) g.FillRectangle(b, r.Left, r.Top, Theme.S(3), r.Height);
         }
 
@@ -544,7 +552,111 @@ namespace DesinstaladorCompleto
             if (Columns.Count == 0) return;
             int others = 0;
             for (int i = 1; i < Columns.Count; i++) others += Columns[i].Width;
-            Columns[0].Width = Math.Max(Theme.S(200), ClientSize.Width - others - 1);
+            Columns[0].Width = Math.Max(Theme.S(200), ClientSize.Width - others);
         }
-    }
+
+        // ---- cabeçalhos de grupo desenhados com as cores do tema (o Windows usaria azul-escuro, ilegível no tema escuro)
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NMLVCUSTOMDRAW
+        {
+            public NMHDR hdr;
+            public int dwDrawStage;
+            public IntPtr hdc;
+            public RECT rc;
+            public IntPtr dwItemSpec;
+            public int uItemState;
+            public IntPtr lItemlParam;
+            public int clrText, clrTextBk, iSubItem, dwItemType, clrFace, iIconEffect, iIconPhase, iPartId, iStateId;
+            public RECT rcText;
+            public int uAlign;
+        }
+
+        private static readonly PropertyInfo groupIdProp = typeof(ListViewGroup).GetProperty("ID", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_PAINT = 0x000F, OCM_NOTIFY = 0x204E, NM_CUSTOMDRAW = -12, CDDS_PREPAINT = 1, LVCDI_GROUP = 1, CDRF_SKIPDEFAULT = 4;
+            if (m.Msg == OCM_NOTIFY && groupIdProp != null)
+            {
+                var hdr = (NMHDR)Marshal.PtrToStructure(m.LParam, typeof(NMHDR));
+                if (hdr.code == NM_CUSTOMDRAW)
+                {
+                    var cd = (NMLVCUSTOMDRAW)Marshal.PtrToStructure(m.LParam, typeof(NMLVCUSTOMDRAW));
+                    if (cd.dwItemType == LVCDI_GROUP && cd.dwDrawStage == CDDS_PREPAINT)
+                    {
+                        DrawGroupHeader(cd);
+                        m.Result = new IntPtr(CDRF_SKIPDEFAULT);
+                        return;
+                    }
+                }
+            }
+            base.WndProc(ref m);
+            if (m.Msg == WM_PAINT && Theme.IsDark) CoverEmptyArea();
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hwnd, int msg, IntPtr wParam, ref RECT lParam);
+
+        /// <summary>
+        /// Pinta com a cor de fundo tudo o que não é item nem cabeçalho de grupo
+        /// (o tema escuro do Windows desenha ali linhas verticais entre as colunas).
+        /// </summary>
+        private void CoverEmptyArea()
+        {
+            const int LVM_GETGROUPRECT = 0x1000 + 98, LVGGR_HEADER = 1;
+            using (var region = new Region(ClientRectangle))
+            {
+                foreach (ListViewItem it in Items)
+                {
+                    Rectangle b = it.Bounds;
+                    if (b.Bottom < 0 || b.Top > ClientSize.Height) continue;
+                    region.Exclude(new Rectangle(0, b.Top, ClientSize.Width, b.Height));
+                }
+                if (ShowGroups && groupIdProp != null)
+                    foreach (ListViewGroup grp in Groups)
+                    {
+                        var r = new RECT { Top = LVGGR_HEADER };
+                        if (SendMessage(Handle, LVM_GETGROUPRECT, new IntPtr((int)groupIdProp.GetValue(grp, null)), ref r) != IntPtr.Zero)
+                            region.Exclude(new Rectangle(0, r.Top, ClientSize.Width, r.Bottom - r.Top));
+                    }
+                using (Graphics g = Graphics.FromHwnd(Handle))
+                using (var b = new SolidBrush(BackColor))
+                    g.FillRegion(b, region);
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NMHDR
+        {
+            public IntPtr hwndFrom;
+            public IntPtr idFrom;
+            public int code;
+        }
+
+        private void DrawGroupHeader(NMLVCUSTOMDRAW cd)
+        {
+            string text = "";
+            int id = cd.dwItemSpec.ToInt32();
+            foreach (ListViewGroup grp in Groups)
+                if ((int)groupIdProp.GetValue(grp, null) == id) { text = grp.Header; break; }
+            var r = Rectangle.FromLTRB(cd.rcText.Left, cd.rcText.Top, cd.rcText.Right, cd.rcText.Bottom);
+            if (r.Width <= 0 || r.Height <= 0) r = Rectangle.FromLTRB(cd.rc.Left, cd.rc.Top, cd.rc.Right, cd.rc.Bottom);
+            r.X = 0;
+            r.Width = Math.Max(r.Width, ClientSize.Width);
+            using (Graphics g = Graphics.FromHdc(cd.hdc))
+            {
+                using (var b = new SolidBrush(Theme.Surface)) g.FillRectangle(b, r);
+                var tr = new Rectangle(r.X + Theme.S(12), r.Y, r.Width - Theme.S(24), r.Height);
+                Size ts = TextRenderer.MeasureText(g, text, Theme.BodyBold, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                TextRenderer.DrawText(g, text, Theme.BodyBold, tr, Theme.AccentText,
+                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                int lx = tr.X + ts.Width + Theme.S(10);
+                if (lx < r.Right - Theme.S(12))
+                    using (var p = new Pen(Theme.Border)) g.DrawLine(p, lx, r.Y + r.Height / 2, r.Right - Theme.S(12), r.Y + r.Height / 2);
+            }
+        }    }
 }

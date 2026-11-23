@@ -56,6 +56,7 @@ namespace DesinstaladorCompleto
             AutoScaleMode = AutoScaleMode.None;
             Font = Theme.Body;
             BackColor = Theme.Background;
+            ForeColor = Theme.Text;
             StartPosition = FormStartPosition.CenterParent;
             Size = new Size(S(1160), S(800));
             MinimumSize = new Size(S(920), S(620));
@@ -172,6 +173,7 @@ namespace DesinstaladorCompleto
 
             SetListButtons(false);
             ShowOverlay(Glyphs.Info, Theme.AccentSoft, Theme.Accent, "Preparando", "Coletando informações do programa...");
+            Theme.Attach(this);
         }
 
         // ------------------------------------------------------------------ layout
@@ -217,7 +219,7 @@ namespace DesinstaladorCompleto
             int x = tglRecycle.Left - S(24);
             var legend = new[]
             {
-                Tuple.Create("Baixa = verifique", Color.FromArgb(243, 244, 246), Theme.TextMuted),
+                Tuple.Create("Baixa = verifique", Theme.Neutral, Theme.TextMuted),
                 Tuple.Create("Média = provável", Theme.WarningLight, Theme.WarningDark),
                 Tuple.Create("Alta = do programa", Theme.SuccessLight, Theme.SuccessDark)
             };
@@ -550,7 +552,7 @@ namespace DesinstaladorCompleto
                     {
                         case Confidence.Alta: bg = Theme.SuccessLight; fg = Theme.SuccessDark; break;
                         case Confidence.Media: bg = Theme.WarningLight; fg = Theme.WarningDark; break;
-                        default: bg = Color.FromArgb(243, 244, 246); fg = Theme.TextMuted; break;
+                        default: bg = Theme.Neutral; fg = Theme.TextMuted; break;
                     }
                     Theme.DrawPill(g, new Rectangle(b.X + S(12), b.Y, b.Width - S(16), b.Height), e.SubItem.Text, bg, fg);
                     break;
